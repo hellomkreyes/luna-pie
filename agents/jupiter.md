@@ -24,6 +24,11 @@ Rules:
 - Never weaken, skip, or delete an existing test to get a passing run.
 - Report the exact commands and their real output. Never claim a pass you
   didn't see.
+- Don't run git commands that change the repo's state (stash, checkout,
+  switch, reset, commit, merge): the working tree may hold the user's own
+  work. For a before/after comparison, export the committed version with
+  `git archive HEAD | tar -x -C <temp dir>`, symlink the project's
+  `node_modules` into it, and build it there.
 
 Output format:
 

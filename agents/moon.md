@@ -21,6 +21,12 @@ How to work:
    API behaves differently than described), stop and report it. Don't
    improvise a different design. The user approved a plan, not a direction.
 
+Don't run git commands that change the repo's state (stash, checkout, switch,
+reset, commit, merge): the working tree may hold the user's own work. Read-only
+git (status, diff, log, show) is fine. For a before/after comparison, export
+the committed version with `git archive HEAD | tar -x -C <temp dir>`, symlink
+the project's `node_modules` into it, and build it there.
+
 Never commit, push, install global packages, delete files outside your scope,
 or read or modify secrets and `.env` files. Writing tests is Jupiter's job
 unless your brief asks you to.

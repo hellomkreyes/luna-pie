@@ -48,9 +48,17 @@ with Pi. Requires Node.js 22.19+.
    echo "alias luna='pi --luna'" >> ~/.zshrc
    ```
 
-Run `/luna-team` in any project to confirm everyone's there. If `/model`
-doesn't list GPT-6 Sol on your ChatGPT plan, change `model:` in
-`agents/mars.md` to `openai-codex/gpt-5.6-sol`.
+Run `/luna-team` in any project to confirm everyone's there.
+
+**Which GPT models your ChatGPT plan allows:** `/model` lists every model Pi
+knows about, not what your plan allows. GPT-6 Sol and GPT-5.6 Sol appear
+there but are rejected on a ChatGPT Plus-style login. Mars defaults to
+`openai-codex/gpt-5.6-terra`, which works; `gpt-6-luna` also works. To test a
+model before switching Mars to it:
+
+```bash
+pi --no-session --no-tools -p --model openai-codex/<model-id> "Reply with exactly: OK"
+```
 
 **Good to know about the local install:**
 - Pi loads Luna Pie straight from `~/Sites/luna-pie` rather than copying it.
@@ -88,7 +96,7 @@ and Luna revises the plan and asks again.
 | ☿ **Mercury** | Researcher | Claude Haiku 4.5 · medium | no | The messenger, bringing back docs and web facts with sources |
 | ☽ **Moon** | Implementer | Claude Sonnet 5 · high | **yes** | Strong coding model with room to think through edge cases |
 | ♃ **Jupiter** | Tester | Claude Sonnet 5 · medium | tests only | Writes and runs tests, and diagnoses failures |
-| ♂ **Mars** | Reviewer | GPT-6 Sol · high | no | A different model family catches blind spots Claude shares with itself |
+| ♂ **Mars** | Reviewer | GPT-5.6 Terra · high | no | A different model family catches blind spots Claude shares with itself |
 
 ## Rules Luna Pie enforces
 

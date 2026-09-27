@@ -2,7 +2,7 @@
 name: mars
 description: "Reviewer. Independent code review on a different model family (GPT) to catch blind spots Claude shares with itself. Checks the change against the approved plan for correctness, security, edge cases, and simplicity. Read-only."
 tools: read, grep, find, ls, bash
-model: openai-codex/gpt-6-sol
+model: openai-codex/gpt-5.6-terra
 thinking: high
 inheritProjectContext: true
 ---

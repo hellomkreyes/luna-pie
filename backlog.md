@@ -10,6 +10,8 @@
   - **Full** is today's flow: Venus/Mercury → Moon → Jupiter + Mars in parallel.
   - Luna says in the plan which she recommends and why. The approval gate works the same for both, because Moon still waits for approval.
   - Idea from the first real run (the content-patterns refactor in chibimuere), where the full flow was heavy for a ~20-line change.
+  - **Tried once, by prompt** (the chibimuere console greeting and view-source ASCII art, PR #17): it worked, but cost **$4.26**, more than the full first mission ($2.81). The team was cheap ($0.82). Luna's own turns were the cost: 46 turns, $3.44 (81%), mostly rounds of taste feedback on the ASCII art, each one on Opus at xhigh.
+  - So light missions need a second rule for **taste calls** (copy, art, naming): Luna gets 3 options drafted on a cheaper model in one go (e.g. a Sonnet "muse" agent, or Moon), and the user picks from those, instead of Luna redrafting on Opus round by round.
 
 ## Personality
 - [ ] Magical-girl mission briefs: tell every build as a mission, and lean all the way into the storytelling. Rename Luna's plan sections in `orchestrator.md`:

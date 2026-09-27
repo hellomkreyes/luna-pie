@@ -1,5 +1,7 @@
 ---
 name: venus
+symbol: "♀"
+order: 1
 description: "Scout. Fast, read-only recon of the codebase: finds the relevant files, entry points, data flow, conventions, and risks, and returns a compressed map with file:line citations. Runs first."
 tools: read, grep, find, ls, bash
 model: anthropic/claude-haiku-4-5

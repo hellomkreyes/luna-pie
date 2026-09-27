@@ -12,9 +12,13 @@
  *   /luna-team       show the team and their models
  *   pi --luna        start in Luna Pie mode
  *
- * Luna's model, tools, and protocol live in ../../orchestrator.md, and the team
- * lives in ../../agents/*.md. pi-subagents discovers the team through the
- * package manifest; this file reads it only to brief Luna and enforce the rules.
+ * Luna's model, tools, protocol, and per-mission budget live in
+ * ../../orchestrator.md, and the team lives in ../../agents/*.md. pi-subagents
+ * discovers the team through the package manifest; this file reads it only to
+ * brief Luna and enforce the rules.
+ *
+ * A mission runs from the task the user gives Luna to her report. Everything it
+ * spends (Luna's turns plus every agent run) counts against the budget.
  */
 
 import * as fs from "node:fs";
@@ -36,6 +40,8 @@ const INSTALL_SUBAGENTS = "pi install npm:pi-subagents@0.71.0";
 const APPROVAL_MARKER = "⏸ Awaiting your approval";
 /** A typed reply that approves the pending plan. */
 const APPROVAL_REPLY = /^\s*(go|go ahead|approved?|yes|yep|y|lgtm|ship it|proceed|do it)\b/i;
+/** Luna's report heading. It ends the mission, so the next task starts a fresh budget. */
+const REPORT_MARKER = "☾ Luna Pie report";
 
 /** Agents with any of these tools can change files, so they wait for plan approval. */
 const WRITE_TOOLS = ["edit", "write"];
@@ -55,6 +61,8 @@ interface OrchestratorConfig {
 	model?: string;
 	tools: string[];
 	protocol: string;
+	/** Per-mission spending cap in USD, or undefined for no cap. */
+	budget?: number;
 }
 
 interface TeamMember {
@@ -78,6 +86,12 @@ interface LunaState {
 	approved: boolean;
 	/** What to restore when Luna Pie mode is turned off. */
 	restore?: { model?: string; thinking: ThinkingLevel; tools: string[] };
+	/** The current (or last) mission's spend in USD; `open` until Luna reports. */
+	mission?: { open: boolean; spent: number };
+}
+
+function formatUsd(amount: number): string {
+	return `$${amount.toFixed(2)}`;
 }
 
 function listValue(value: unknown): string[] | undefined {
@@ -90,13 +104,15 @@ function listValue(value: unknown): string[] | undefined {
 
 function loadOrchestratorConfig(): OrchestratorConfig {
 	const content = fs.readFileSync(ORCHESTRATOR_FILE, "utf-8");
-	const { frontmatter, body } = parseFrontmatter<{ model?: unknown; tools?: unknown }>(content);
+	const { frontmatter, body } = parseFrontmatter<{ model?: unknown; tools?: unknown; budget?: unknown }>(content);
 	const tools = listValue(frontmatter.tools) ?? [...DEFAULT_ORCHESTRATOR_TOOLS];
 	if (!tools.includes("subagent")) tools.push("subagent");
+	const budget = Number(frontmatter.budget);
 	return {
 		model: typeof frontmatter.model === "string" ? frontmatter.model : undefined,
 		tools,
 		protocol: body.trim(),
+		budget: Number.isFinite(budget) && budget > 0 ? budget : undefined,
 	};
 }
 
@@ -207,7 +223,38 @@ export default function lunaPie(pi: ExtensionAPI) {
 		}
 		const model = ctx.model ? ctx.model.id : "?";
 		const gate = state.approved ? " · ✓ plan approved" : "";
-		ctx.ui.setStatus("luna-pie", ctx.ui.theme.fg("accent", `☾ Luna Pie · ${model} · ${pi.getThinkingLevel()}${gate}`));
+		const budget = currentBudget();
+		const spend = state.mission
+			? ` · ${formatUsd(state.mission.spent)}${budget ? ` / ${formatUsd(budget)}` : ""}`
+			: budget
+				? ` · budget ${formatUsd(budget)}`
+				: "";
+		ctx.ui.setStatus(
+			"luna-pie",
+			ctx.ui.theme.fg("accent", `☾ Luna Pie · ${model} · ${pi.getThinkingLevel()}${spend}${gate}`),
+		);
+	}
+
+	function currentBudget(): number | undefined {
+		try {
+			return loadOrchestratorConfig().budget;
+		} catch {
+			return undefined;
+		}
+	}
+
+	/** A new task from the user starts a new mission with a fresh budget. */
+	function startMission(ctx: ExtensionContext) {
+		state.mission = { open: true, spent: 0 };
+		state.approved = false;
+		persist();
+		updateStatus(ctx);
+	}
+
+	function addSpend(cost: number | undefined, ctx: ExtensionContext) {
+		if (!state.mission?.open || !cost) return;
+		state.mission.spent += cost;
+		updateStatus(ctx);
 	}
 
 	function setApproved(approved: boolean, ctx?: ExtensionContext) {
@@ -296,6 +343,10 @@ export default function lunaPie(pi: ExtensionAPI) {
 		if (writers.length > 0 && !state.approved) {
 			return `${writers.join(" and ")} can change files, and the user hasn't approved a plan yet. Present your plan, end with "${APPROVAL_MARKER}", and wait.`;
 		}
+		const budget = currentBudget();
+		if (agents.length > 0 && budget && state.mission && state.mission.spent >= budget) {
+			return `this mission's budget is used up (${formatUsd(state.mission.spent)} of ${formatUsd(budget)}). Don't delegate any more. Write your report now, with the outcome marked ⚠️ Partial (budget reached), and say what's left to do.`;
+		}
 		return undefined;
 	}
 
@@ -310,7 +361,7 @@ export default function lunaPie(pi: ExtensionAPI) {
 			}
 			if (!(await enable(ctx))) return;
 			await ctx.waitForIdle();
-			setApproved(false, ctx);
+			startMission(ctx);
 			pi.sendUserMessage(task);
 		},
 	});
@@ -324,9 +375,11 @@ export default function lunaPie(pi: ExtensionAPI) {
 			} catch {
 				/* reported by enable() when it matters */
 			}
+			const budget = currentBudget();
 			const lines = [
 				`☾ luna (orchestrator): ${luna}`,
 				...loadTeam().map((m) => `${m.name}: ${m.model ?? "(default)"}${m.writer ? " · changes files" : ""}`),
+				`budget per mission: ${budget ? formatUsd(budget) : "none"}`,
 			];
 			ctx.ui.notify(lines.join("\n"), "info");
 		},
@@ -335,16 +388,34 @@ export default function lunaPie(pi: ExtensionAPI) {
 	pi.on("before_agent_start", async (event) => {
 		if (!state.enabled) return;
 		// Re-read on every run so edits to orchestrator.md and agents/ apply without /reload.
-		const { protocol } = loadOrchestratorConfig();
-		event.systemPromptOptions.sections.luna_pie = protocol.replace("{{agents}}", renderRoster(loadTeam()));
+		const { protocol, budget } = loadOrchestratorConfig();
+		const spent = state.mission?.open ? state.mission.spent : 0;
+		const budgetLine = budget
+			? `\n\n## Mission budget\n\nThis mission may spend ${formatUsd(budget)} in total, counting your own turns and every agent run. ${formatUsd(spent)} is spent so far. Once it's used up, delegation is blocked and you write your report.`
+			: "";
+		event.systemPromptOptions.sections.luna_pie =
+			protocol.replace("{{agents}}", renderRoster(loadTeam())) + budgetLine;
 	});
 
 	// A typed reply to a plan either approves it or asks for changes, which need approval again.
+	// With no mission open, the message is a new task and starts a new mission.
 	pi.on("input", async (event, ctx) => {
 		if (!state.enabled || event.source === "extension") return;
 		const text = event.text.trim();
 		if (!text || text.startsWith("/")) return;
-		setApproved(APPROVAL_REPLY.test(text), ctx);
+		if (!state.mission?.open) startMission(ctx);
+		else setApproved(APPROVAL_REPLY.test(text), ctx);
+	});
+
+	// Count Luna's own turns and every agent run against the mission budget.
+	pi.on("message_end", async (event, ctx) => {
+		if (!state.enabled || !isAssistant(event.message)) return;
+		addSpend(event.message.usage?.cost?.total, ctx);
+	});
+
+	pi.on("tool_result", async (event, ctx) => {
+		if (!state.enabled || event.toolName !== "subagent") return;
+		addSpend(event.usage?.cost?.total, ctx);
 	});
 
 	pi.on("tool_call", async (event) => {
@@ -365,15 +436,31 @@ export default function lunaPie(pi: ExtensionAPI) {
 		const violation = delegationViolation(event.input);
 		if (violation) return { block: true, reason: `Luna Pie: ${violation}` };
 
+		if (delegatedAgents(event.input).agents.length === 0) return;
 		// Luna has to see results to verify them, so every launch runs in the foreground.
-		if (delegatedAgents(event.input).agents.length > 0) event.input.async = false;
+		event.input.async = false;
+		// Inside one workflow, pi-subagents stops launching new agents once the rest of the budget is spent.
+		const budget = currentBudget();
+		if (budget && state.mission && event.input.workflowScript !== undefined && event.input.usageBudget === undefined) {
+			event.input.usageBudget = { costUsd: { hard: Math.max(budget - state.mission.spent, 0.01) } };
+		}
 	});
 
-	// When Luna presents a plan, close the gate and ask the user to approve it.
 	pi.on("agent_end", async (event, ctx) => {
 		if (!state.enabled) return;
 		const last = [...event.messages].reverse().find(isAssistant);
-		if (!last || !textOf(last).includes(APPROVAL_MARKER)) return;
+		const text = last ? textOf(last) : "";
+
+		// Luna's report ends the mission; the next task gets a fresh budget.
+		if (text.includes(REPORT_MARKER) && state.mission?.open) {
+			state.mission.open = false;
+			persist();
+			updateStatus(ctx);
+			return;
+		}
+
+		// When Luna presents a plan, close the gate and ask the user to approve it.
+		if (!text.includes(APPROVAL_MARKER)) return;
 
 		setApproved(false, ctx);
 		if (!ctx.hasUI) return;

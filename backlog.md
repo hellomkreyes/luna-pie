@@ -10,11 +10,6 @@
   - **Full** is today's flow: Venus/Mercury → Moon → Jupiter + Mars in parallel.
   - Luna says in the plan which she recommends and why. The approval gate works the same for both, because Moon still waits for approval.
   - Idea from the first real run (the content-patterns refactor in chibimuere), where the full flow was heavy for a ~20-line change.
-- [ ] Optional per-task spending cap. Add a `budget` setting to `orchestrator.md` (e.g. `budget: 5.00` in USD) that Luna Pie applies to every delegation through pi-subagents' `usageBudget` (`costUsd` soft and hard limits). Known limits to document:
-  - It stops *new* agents from starting once reported spend passes the cap. It doesn't stop agents already running.
-  - It doesn't count Luna's own usage. To cover that, the extension could total Luna's spend from the session and block further delegations once the overall cap is hit.
-  - Show spend against the cap in the `☾ Luna Pie` status line (e.g. `$1.84 / $5.00`), and have Luna say in her report when a cap stopped work
-  - The real hard limit stays at the source: the monthly extra-usage limit at claude.ai/settings/usage
 
 ## Personality
 - [ ] Magical-girl mission briefs: tell every build as a mission, and lean all the way into the storytelling. Rename Luna's plan sections in `orchestrator.md`:

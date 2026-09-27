@@ -81,6 +81,7 @@ instead of everywhere, run the install from inside that repo with `-l`, as in
 | `pi --luna` | Start a session already in Luna Pie mode |
 | `/subagents-fleet` | Watch agents live, read their transcripts, or stop one (from pi-subagents) |
 | `/subagents-doctor` | Diagnose the engine if something seems off (from pi-subagents) |
+| `/subagent-cost` | Cost breakdown: Luna plus each agent run (from pi-subagents) |
 
 When Luna's plan is ready, a dialog asks you to **Approve**, **Revise** (you
 type what to change), or **Hold**. You can also just type a reply: "go",
@@ -117,6 +118,17 @@ if Luna tries to break one.
   are blocked. Luna never commits, pushes, or deploys. Changes stay in your
   working tree for review.
 - **Agents can't spawn agents.** pi-subagents enforces this for every child.
+- **Every mission has a budget.** A mission runs from the task you give Luna
+  to her report, and everything it spends counts: Luna's own turns plus every
+  agent run. The status line shows it live (`☾ Luna Pie · … · $1.84 / $5.00`).
+  Once the budget is used up, Luna can't delegate any more and writes her
+  report, marked ⚠️ Partial. Inside a single workflow, pi-subagents also stops
+  launching agents when the rest of the budget runs out.
+
+  What it can't do: stop an agent that's already running, or stop Luna
+  mid-thought, so a mission can finish a little over budget. The hard limit
+  is still the monthly extra-usage cap on your provider account (for
+  Anthropic, claude.ai/settings/usage).
 
 ## Customize
 
@@ -126,6 +138,8 @@ with no reload needed.
 - **Change a model:** edit `model:` and `thinking:` in `agents/<planet>.md`, or
   `model:` in `orchestrator.md` (format `provider/model-id:thinking`). Run
   `pi --list-models` to see what's available.
+- **Change the budget:** edit `budget:` in `orchestrator.md` (USD per
+  mission, default `5.00`). Remove the line for no cap.
 - **Change the workflow:** edit the body of `orchestrator.md`. The `{{agents}}`
   placeholder is filled with the live team roster.
 - **Add a teammate:** drop a new file into `agents/`, such as `saturn.md` for

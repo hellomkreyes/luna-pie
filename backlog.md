@@ -5,6 +5,11 @@
 - [ ] Rename `/luna-team` to `/role-call` (in `extensions/luna/index.ts` and the README)
 
 ## Cost
+- [ ] Light missions: teach Luna (in `orchestrator.md`, so it persists across sessions) to size each mission and propose **full** or **light** in her plan, for the user to choose.
+  - **Light** is for small, low-risk changes: a refactor with no behaviour change, a copy edit, a config tweak. Moon implements and runs one mechanical check herself (e.g. a before/after build diff), and Luna reviews the diff. Jupiter and Mars are skipped unless something looks risky.
+  - **Full** is today's flow: Venus/Mercury → Moon → Jupiter + Mars in parallel.
+  - Luna says in the plan which she recommends and why. The approval gate works the same for both, because Moon still waits for approval.
+  - Idea from the first real run (the content-patterns refactor in chibimuere), where the full flow was heavy for a ~20-line change.
 - [ ] Optional per-task spending cap. Add a `budget` setting to `orchestrator.md` (e.g. `budget: 5.00` in USD) that Luna Pie applies to every delegation through pi-subagents' `usageBudget` (`costUsd` soft and hard limits). Known limits to document:
   - It stops *new* agents from starting once reported spend passes the cap. It doesn't stop agents already running.
   - It doesn't count Luna's own usage. To cover that, the extension could total Luna's spend from the session and block further delegations once the overall cap is hit.

@@ -1,0 +1,19 @@
+{
+	"name": "luna-pie",
+	"version": "0.2.0",
+	"description": "Orchestrator mode for Pi: Luna plans, you approve, and a planet-named team of agents researches, implements, tests, and reviews",
+	"type": "module",
+	"private": true,
+	"keywords": ["pi-package"],
+	"pi": {
+		"extensions": ["./extensions/luna/index.ts"],
+		"subagents": {
+			"agents": ["./agents"]
+		}
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-agent-core": "*",
+		"@earendil-works/pi-ai": "*",
+		"@earendil-works/pi-coding-agent": "*"
+	}
+}

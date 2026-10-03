@@ -1,5 +1,7 @@
 ---
 name: mercury
+symbol: "☿"
+order: 2
 description: "Researcher. Answers questions from the web and official docs (APIs, libraries, versions, best practices) and returns cited findings. Read-only."
 tools: read, web_search, fetch_content, get_search_content
 subagentOnlyExtensions: ../extensions/web-access.ts

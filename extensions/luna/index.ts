@@ -9,7 +9,7 @@
  *
  *   /luna            toggle Luna Pie mode
  *   /luna <task>     enable Luna Pie mode and hand Luna a task
- *   /luna-team       show the team and their models
+ *   /role-call       show the team, their symbols, and their models
  *   pi --luna        start in Luna Pie mode
  *
  * Luna's model, tools, protocol, and per-mission budget live in
@@ -37,11 +37,11 @@ const STATE_ENTRY = "luna-pie-mode";
 const INSTALL_SUBAGENTS = "pi install npm:pi-subagents@0.71.0";
 
 /** Luna ends every plan with this line. It closes the approval gate and prompts the user. */
-const APPROVAL_MARKER = "⏸ Awaiting your approval";
+const APPROVAL_MARKER = "⏸ Awaiting your command";
 /** A typed reply that approves the pending plan. */
 const APPROVAL_REPLY = /^\s*(go|go ahead|approved?|yes|yep|y|lgtm|ship it|proceed|do it)\b/i;
-/** Luna's report heading. It ends the mission, so the next task starts a fresh budget. */
-const REPORT_MARKER = "☾ Luna Pie report";
+/** Luna's debrief heading. It ends the mission, so the next task starts a fresh budget. */
+const REPORT_MARKER = "☾ Mission Debrief";
 
 /** Agents with any of these tools can change files, so they wait for plan approval. */
 const WRITE_TOOLS = ["edit", "write"];
@@ -59,6 +59,8 @@ const AGENT_KEY = /["']?\bagent["']?\s*:/g;
 
 interface OrchestratorConfig {
 	model?: string;
+	/** Luna's symbol in the roster, e.g. ☾. */
+	symbol: string;
 	tools: string[];
 	protocol: string;
 	/** Per-mission spending cap in USD, or undefined for no cap. */
@@ -67,6 +69,12 @@ interface OrchestratorConfig {
 
 interface TeamMember {
 	name: string;
+	/** The planet's symbol, e.g. ♀ for Venus. */
+	symbol: string;
+	/** The first sentence of the description, e.g. "Scout". */
+	role: string;
+	/** Position in the role call and roster, in mission order (Venus scouts first). */
+	order: number;
 	description: string;
 	/** "provider/model-id:thinking", as pi-subagents will resolve it. */
 	model?: string;
@@ -104,12 +112,18 @@ function listValue(value: unknown): string[] | undefined {
 
 function loadOrchestratorConfig(): OrchestratorConfig {
 	const content = fs.readFileSync(ORCHESTRATOR_FILE, "utf-8");
-	const { frontmatter, body } = parseFrontmatter<{ model?: unknown; tools?: unknown; budget?: unknown }>(content);
+	const { frontmatter, body } = parseFrontmatter<{
+		model?: unknown;
+		symbol?: unknown;
+		tools?: unknown;
+		budget?: unknown;
+	}>(content);
 	const tools = listValue(frontmatter.tools) ?? [...DEFAULT_ORCHESTRATOR_TOOLS];
 	if (!tools.includes("subagent")) tools.push("subagent");
 	const budget = Number(frontmatter.budget);
 	return {
 		model: typeof frontmatter.model === "string" ? frontmatter.model : undefined,
+		symbol: typeof frontmatter.symbol === "string" ? frontmatter.symbol : "☾",
 		tools,
 		protocol: body.trim(),
 		budget: Number.isFinite(budget) && budget > 0 ? budget : undefined,
@@ -132,24 +146,32 @@ function loadTeam(): TeamMember[] {
 		const tools = listValue(frontmatter.tools) ?? [];
 		const model = typeof frontmatter.model === "string" ? frontmatter.model : undefined;
 		const thinking = typeof frontmatter.thinking === "string" ? frontmatter.thinking : undefined;
+		const description = typeof frontmatter.description === "string" ? frontmatter.description : "";
 		team.push({
 			name: frontmatter.name,
-			description: typeof frontmatter.description === "string" ? frontmatter.description : "",
+			symbol: typeof frontmatter.symbol === "string" ? frontmatter.symbol : "·",
+			role: description.split(".")[0].trim(),
+			order: typeof frontmatter.order === "number" ? frontmatter.order : Number.MAX_SAFE_INTEGER,
+			description,
 			model: model && thinking ? `${model}:${thinking}` : model,
 			tools,
 			writer: tools.some((t) => WRITE_TOOLS.includes(t)),
 		});
 	}
-	return team;
+	return team.sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
 }
 
 function renderRoster(team: TeamMember[]): string {
 	if (team.length === 0) return "(no agents found; check the agents/ directory)";
 	const rows = team.map(
 		(m) =>
-			`| ${m.name} | ${m.model ?? "(default)"} | ${m.tools.join(", ")} | ${m.writer ? "yes" : "no"} | ${m.description} |`,
+			`| ${m.symbol} | ${m.name} | ${m.model ?? "(default)"} | ${m.tools.join(", ")} | ${m.writer ? "yes" : "no"} | ${m.description} |`,
 	);
-	return ["| agent | model | tools | changes files | role |", "|---|---|---|---|---|", ...rows].join("\n");
+	return [
+		"| symbol | agent | model | tools | changes files | role |",
+		"|---|---|---|---|---|---|",
+		...rows,
+	].join("\n");
 }
 
 /** Parse "provider/model-id:thinking" (provider and thinking are optional). */
@@ -304,7 +326,7 @@ export default function lunaPie(pi: ExtensionAPI) {
 		state = { enabled: true, approved: false, restore };
 		persist();
 		updateStatus(ctx);
-		ctx.ui.notify("Luna Pie mode on. Give Luna a task.", "info");
+		ctx.ui.notify(`${config.symbol} Luna Pie mode on. Give Luna a mission.`, "info");
 		return true;
 	}
 
@@ -345,7 +367,7 @@ export default function lunaPie(pi: ExtensionAPI) {
 		}
 		const budget = currentBudget();
 		if (agents.length > 0 && budget && state.mission && state.mission.spent >= budget) {
-			return `this mission's budget is used up (${formatUsd(state.mission.spent)} of ${formatUsd(budget)}). Don't delegate any more. Write your report now, with the outcome marked ⚠️ Partial (budget reached), and say what's left to do.`;
+			return `this mission's budget is used up (${formatUsd(state.mission.spent)} of ${formatUsd(budget)}). Don't delegate any more. Write your mission debrief now, with the outcome marked ⚠️ Partial (budget reached), and say what's left to do.`;
 		}
 		return undefined;
 	}
@@ -366,20 +388,24 @@ export default function lunaPie(pi: ExtensionAPI) {
 		},
 	});
 
-	pi.registerCommand("luna-team", {
-		description: "Show the Luna Pie team: agents, models, and tools",
+	pi.registerCommand("role-call", {
+		description: "Role call: the Luna Pie team, their symbols, and their models",
 		handler: async (_args, ctx) => {
-			let luna = "(orchestrator.md unreadable)";
+			let luna = { symbol: "☾", model: "(orchestrator.md unreadable)" };
 			try {
-				luna = loadOrchestratorConfig().model ?? "(current session model)";
+				const config = loadOrchestratorConfig();
+				luna = { symbol: config.symbol, model: config.model ?? "(current session model)" };
 			} catch {
 				/* reported by enable() when it matters */
 			}
 			const budget = currentBudget();
 			const lines = [
-				`☾ luna (orchestrator): ${luna}`,
-				...loadTeam().map((m) => `${m.name}: ${m.model ?? "(default)"}${m.writer ? " · changes files" : ""}`),
-				`budget per mission: ${budget ? formatUsd(budget) : "none"}`,
+				"✧ Role call ✧",
+				`${luna.symbol} luna · Orchestrator · ${luna.model}`,
+				...loadTeam().map(
+					(m) => `${m.symbol} ${m.name} · ${m.role} · ${m.model ?? "(default)"}${m.writer ? " · changes files" : ""}`,
+				),
+				`Budget per mission: ${budget ? formatUsd(budget) : "none"}`,
 			];
 			ctx.ui.notify(lines.join("\n"), "info");
 		},
@@ -465,14 +491,14 @@ export default function lunaPie(pi: ExtensionAPI) {
 		setApproved(false, ctx);
 		if (!ctx.hasUI) return;
 
-		const choice = await ctx.ui.select("☾ Luna's plan is ready", [
-			"Approve: start the work",
+		const choice = await ctx.ui.select("☾ Luna's battle plans are ready", [
+			"Approve: begin the mission",
 			"Revise: tell Luna what to change",
 			"Hold: I'll reply later",
 		]);
 		if (choice?.startsWith("Approve")) {
 			setApproved(true, ctx);
-			pi.sendUserMessage("Approved. Go ahead with the plan.", { deliverAs: "followUp" });
+			pi.sendUserMessage("Approved. Begin the mission.", { deliverAs: "followUp" });
 		} else if (choice?.startsWith("Revise")) {
 			const notes = await ctx.ui.editor("What should Luna change?", "");
 			if (notes?.trim()) pi.sendUserMessage(notes.trim(), { deliverAs: "followUp" });

@@ -4,7 +4,7 @@ An orchestration layer for [Pi](https://pi.dev). Your main Pi session becomes
 **Luna**, an orchestrator on the strongest reasoning model you have. Luna
 evaluates your task, plans it, and waits for **your approval**. Then she hands
 the work to a team named after the planets, checks what they produce, and
-gives you a report to review.
+gives you a mission debrief to review.
 
 ```
 you ──task──▶ ☾ Luna (Opus 5.5 · xhigh)
@@ -48,7 +48,7 @@ with Pi. Requires Node.js 22.19+.
    echo "alias luna='pi --luna'" >> ~/.zshrc
    ```
 
-Run `/luna-team` in any project to confirm everyone's there.
+Run `/role-call` in any project to confirm everyone's there.
 
 **Which GPT models your ChatGPT plan allows:** `/model` lists every model Pi
 knows about, not what your plan allows. GPT-6 Sol and GPT-5.6 Sol appear
@@ -77,16 +77,20 @@ instead of everywhere, run the install from inside that repo with `-l`, as in
 |---|---|
 | `/luna <task>` | Switch to Luna Pie mode and give Luna a task |
 | `/luna` | Toggle Luna Pie mode. Turning it off restores your previous model, thinking level, and tools. |
-| `/luna-team` | Show the team and their models |
+| `/role-call` | Role call: the team, their symbols, and their models |
 | `pi --luna` | Start a session already in Luna Pie mode |
 | `/subagents-fleet` | Watch agents live, read their transcripts, or stop one (from pi-subagents) |
 | `/subagents-doctor` | Diagnose the engine if something seems off (from pi-subagents) |
 | `/subagent-cost` | Cost breakdown: Luna plus each agent run (from pi-subagents) |
 
-When Luna's plan is ready, a dialog asks you to **Approve**, **Revise** (you
-type what to change), or **Hold**. You can also just type a reply: "go",
-"approved", "yes", or "lgtm" approves it. Anything else counts as feedback,
-and Luna revises the plan and asks again.
+Every task is a mission. Luna opens with a **mission brief**: Brief, Mission
+Type, Intel, Battle Plans, Success Criteria, and Mission Risks & Unknowns. It
+ends with "⏸ Awaiting your command", and a dialog asks you to **Approve**,
+**Revise** (you type what to change), or **Hold**. You can also just type a
+reply: "go", "approved", "yes", or "lgtm" approves it. Anything else counts as
+feedback, and Luna revises the plan and asks again. When the work is done, she
+closes with a **Mission Debrief**: what was accomplished, the proof, and the
+squad roster.
 
 ## The team
 
@@ -119,10 +123,10 @@ if Luna tries to break one.
   working tree for review.
 - **Agents can't spawn agents.** pi-subagents enforces this for every child.
 - **Every mission has a budget.** A mission runs from the task you give Luna
-  to her report, and everything it spends counts: Luna's own turns plus every
+  to her mission debrief, and everything it spends counts: Luna's own turns plus every
   agent run. The status line shows it live (`☾ Luna Pie · … · $1.84 / $5.00`).
   Once the budget is used up, Luna can't delegate any more and writes her
-  report, marked ⚠️ Partial. Inside a single workflow, pi-subagents also stops
+  debrief, marked ⚠️ Partial. Inside a single workflow, pi-subagents also stops
   launching agents when the rest of the budget runs out.
 
   What it can't do: stop an agent that's already running, or stop Luna

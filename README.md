@@ -1,40 +1,48 @@
 # ☾ Luna Pie
 
-An orchestration layer for [Pi](https://pi.dev). Your main Pi session becomes
-**Luna**, an orchestrator on the strongest reasoning model you have. Luna
-evaluates your task, plans it, and waits for **your approval**. Then she hands
-the work to a team named after the planets, checks what they produce, and
-gives you a mission debrief to review.
+✨ A  magical girl orchestration layer for [Pi](https://pi.dev) . ✨
+
+Requires Node.js 22.19+.
+
+<img width="750" alt="Image of Luna Pie, as a retro channel spoof." src="https://github.com/user-attachments/assets/968eddab-7aac-446c-a35d-425d59e637fb" />
+
+## Summon `/luna` to transform your Pi session
+
+- **Luna** is an orchestrator, running on the strongest reasoning model available
+- Luna will evaluate your task, plan it, and present the mission docket for **your approval**.
+- Then Luna hands the work to a team of planetary agents, checks what they produce and gives you a mission debrief
 
 ```
 you ──task──▶ ☾ Luna (Opus 5.5 · xhigh)
-               1. Evaluate  ──▶ Venus (scout) · Mercury (web research)    read-only
-               2. Plan      goal · findings · steps · done-when
-               ⏸ you approve, revise, or hold
-               3. Delegate  ──▶ Moon (implements)
+    1. Evaluate  ──▶ Venus (scout) · Mercury (web research)    read-only
+    2. Plan          goal · findings · steps · done-when
+    ⏸ you approve, revise, or hold
+    3. Delegate  ──▶ Moon (implements)
                             ──▶ Jupiter (tests) + Mars (reviews, GPT)    in parallel
                4. Verify    reads the diff, loops fixes back to Moon (max 2 cycles)
                5. Report ──────────────────────────────────────────▶ you review
 ```
 
-**How it's built:** Luna Pie is the management layer: the roles, the
-protocol, the approval gate, and the rules. [pi-subagents](https://github.com/nicobailon/pi-subagents)
-is the engine that runs the agents. [pi-web-access](https://github.com/nicobailon/pi-web-access)
-gives Mercury web search. Both are pinned to tested versions.
+## **How it's built:** 
+
+### Luna Pie is the management layer
+- The roles, the protocol, the approval gate, and the rules. [pi-subagents](https://github.com/nicobailon/pi-subagents)
+- The engine that runs the agents. [pi-web-access](https://github.com/nicobailon/pi-web-access)
 
 ## Setup
 
-This installs Luna Pie globally, so it's available in every project you open
-with Pi. Requires Node.js 22.19+.
+This installs Luna Pie globally, so it's available in every project you open with Pi. 
 
 1. **Install Pi globally:**
    ```bash
    npm install -g --ignore-scripts @earendil-works/pi-coding-agent
    ```
+   
 2. **Log in:** start `pi` and run `/login` twice.
    - **Anthropic**, for Luna, Venus, Mercury, Moon, and Jupiter.
    - **OpenAI (ChatGPT Plus/Pro)**, for Mars. A browser opens to ChatGPT, where
      you can sign in with Google as usual.
+     
 3. **Install the engine and Luna Pie for your user:**
    ```bash
    pi install npm:pi-subagents@0.71.0
@@ -43,18 +51,19 @@ with Pi. Requires Node.js 22.19+.
    ```
    `pi install` without flags is a personal install. It's recorded in
    `~/.pi/agent/settings.json` and loads in every project.
+   
 4. **Optional:** add an alias that starts Pi in Luna Pie mode:
    ```bash
    echo "alias luna='pi --luna'" >> ~/.zshrc
    ```
 
-Run `/role-call` in any project to confirm everyone's there.
+5. Run `/role-call` in any project to confirm everyone's there.
 
-**Which GPT models your ChatGPT plan allows:** `/model` lists every model Pi
-knows about, not what your plan allows. GPT-6 Sol and GPT-5.6 Sol appear
-there but are rejected on a ChatGPT Plus-style login. Mars defaults to
-`openai-codex/gpt-5.6-terra`, which works; `gpt-6-luna` also works. To test a
-model before switching Mars to it:
+## **Which GPT models your ChatGPT plan allows:** 
+- `/model` lists every model Pi knows about, not what your plan allows.
+- GPT-6 Sol and GPT-5.6 Sol appear there but are rejected on a ChatGPT Plus-style login.
+- **Mars** defaults to `openai-codex/gpt-5.6-terra`, which works; `gpt-6-luna` also works.
+- To test a model before switching Mars to it, run the command:
 
 ```bash
 pi --no-session --no-tools -p --model openai-codex/<model-id> "Reply with exactly: OK"
